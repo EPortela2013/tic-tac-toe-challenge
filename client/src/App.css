@@ -69,13 +69,15 @@ svg {
 }
 
 .CurrentTurn {
-  display: block;
   fill: green;
 }
 
 .Waiting {
-  display: block;
   fill: red;
+}
+
+.GameOver {
+  fill: blue;
 }
 
 @keyframes SVG-spin {

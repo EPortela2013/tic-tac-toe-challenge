@@ -4,10 +4,11 @@ import "./App.css";
 import OSVG from "./svgs/o.svg";
 import XSVG from "./svgs/x.svg";
 import { ReactSVG } from "react-svg";
-
-
+import { w3cwebsocket as W3CWebSocket } from "websocket";
 
 function App() {
+  const WS_HOST = window.location.origin.replace(/^http/, 'ws').replace(':3000', ':3001');
+  const client = new W3CWebSocket(WS_HOST);
   const [data, setData] = React.useState({ turnPlayerX: true, filledCellCount: 0, gameOver: false });
 
   function getWinningCells() {
@@ -81,6 +82,8 @@ function App() {
       // Update turn signal.
       document.getElementById(Constants.SVG + Constants.X).classList.remove(Constants.CURRENT_TURN);
       document.getElementById(Constants.SVG + Constants.O).classList.remove(Constants.CURRENT_TURN);
+      document.getElementById(Constants.SVG + Constants.X).classList.remove(Constants.WAITING);
+      document.getElementById(Constants.SVG + Constants.O).classList.remove(Constants.WAITING);
     }
 
     setData(data);
@@ -88,9 +91,22 @@ function App() {
     return true;
   }
 
-  function makeMove(event) {
+  function makeMove(event, force = false) {
     // Don't do anything if game is already over.
     if (data.gameOver) {
+      return;
+    }
+
+    // Don't do anything if symbol has not been assigned
+    if (data?.assignedSymbol === undefined) {
+      return;
+    }
+
+    let currentPlayer = data.turnPlayerX ? Constants.X : Constants.O;
+    let otherPlayer = data.turnPlayerX ? Constants.O : Constants.X;
+
+    if (![currentPlayer, Constants.BOTH].includes(data.assignedSymbol) && !force) {
+      // It's the other player's turn. Don't do anything.
       return;
     }
 
@@ -100,8 +116,6 @@ function App() {
     }
     else {
       // Fill in the cell with the appropriate symbol.
-      let currentPlayer = data.turnPlayerX ? Constants.X : Constants.O;
-      let otherPlayer = data.turnPlayerX ? Constants.O : Constants.X;
       let currentCellSVGGrandParent = document.getElementById(event.currentTarget.id + currentPlayer);
       let currentCellSVG = currentCellSVGGrandParent.firstChild.firstChild;
       // Make symbol visible
@@ -110,21 +124,110 @@ function App() {
       currentCellSVG.id = event.currentTarget.id + Constants.SVG;
       // Save what symbol is in the cell.
       data[event.currentTarget.id] = currentPlayer;
-      // Switch turn to other player.
-      data.turnPlayerX = !data.turnPlayerX;
-      // Update turn signal.
-      document.getElementById(Constants.SVG + currentPlayer).classList.remove(Constants.CURRENT_TURN);
-      document.getElementById(Constants.SVG + otherPlayer).classList.add(Constants.CURRENT_TURN);
-      //
       // Increase count of filled cells.
       ++data.filledCellCount;
       // Save data.
       setData(data);
+
+      // Switch turn to other player.
+      data.turnPlayerX = !data.turnPlayerX;
+      // Update turn signal.
+      if (data.assignedSymbol === Constants.BOTH) {
+        document.getElementById(Constants.SVG + currentPlayer).classList.remove(Constants.CURRENT_TURN);
+        document.getElementById(Constants.SVG + otherPlayer).classList.add(Constants.CURRENT_TURN);
+      } else {
+        if (data.assignedSymbol === currentPlayer) {
+          document.getElementById(Constants.SVG + currentPlayer).classList.remove(Constants.CURRENT_TURN);
+          document.getElementById(Constants.SVG + otherPlayer).classList.add(Constants.WAITING);
+        } else {
+          document.getElementById(Constants.SVG + currentPlayer).classList.remove(Constants.WAITING);
+          document.getElementById(Constants.SVG + otherPlayer).classList.add(Constants.CURRENT_TURN);
+        }
+      }
+
+      // Send message to server for it to relay it to the other player
+      if (data.assignedSymbol !== Constants.BOTH && !force) {
+        client.send(JSON.stringify({ move: event.currentTarget.id }));
+      }
     }
     return true;
   }
 
+  function handleOtherPlayerMove(move) {
+    // Create pseudo event
+    const pseudoEvent = { currentTarget: { id: move } };
+    makeMove(pseudoEvent, true);
+    checkGame();
+  }
+
+  function initializeTurnSignals() {
+    // Update turn signals
+    let classesForTurnSignalX = [];
+    let classesForTurnSignalO = [];
+    switch (data?.assignedSymbol) {
+      case Constants.BOTH:
+      case Constants.X: {
+        classesForTurnSignalX.push(Constants.CURRENT_TURN);
+        break;
+      }
+      case Constants.O: {
+        classesForTurnSignalX.push(Constants.WAITING);
+        break;
+      }
+      default: {
+        classesForTurnSignalO.push(Constants.WAITING);
+        classesForTurnSignalX.push(Constants.WAITING);
+      }
+    }
+
+    if (classesForTurnSignalO.length) {
+      document.getElementById(Constants.SVG + Constants.O).classList.add(classesForTurnSignalO);
+    }
+
+    if (classesForTurnSignalX.length) {
+      document.getElementById(Constants.SVG + Constants.X).classList.add(classesForTurnSignalX);
+    }
+  }
+
+  function handleOtherPlayerDropped() {
+    if (data.gameOver) {
+      return;
+    }
+
+    let svgs = document.getElementsByTagName('svg');
+    for (let svg of svgs) {
+      svg.classList.add(Constants.GAME_OVER);
+    }
+    data.gameOver = true;
+  }
+
   React.useEffect(() => {
+    client.onopen = () => {
+      console.log('Websocket client connected');
+
+      // Inform server that it's ready for game
+      client.send(JSON.stringify({ readyForGame: true }));
+    };
+
+    client.onmessage = (message) => {
+      const dataFromServer = JSON.parse(message.data);
+
+      if (dataFromServer?.assignedSymbol) {
+        data.assignedSymbol = dataFromServer.assignedSymbol;
+        initializeTurnSignals();
+        return;
+      }
+
+      if (dataFromServer?.move) {
+        handleOtherPlayerMove(dataFromServer.move);
+        return;
+      }
+
+      if (dataFromServer?.otherPlayerDropped) {
+        handleOtherPlayerDropped();
+      }
+    };
+
     // Find all cells.
     var cells = document.getElementsByClassName("Cell");
     for (let cell of cells) {
@@ -137,7 +240,7 @@ function App() {
   return (
     <div className="App">
       <div className="GridWrapper">
-        <ReactSVG src={XSVG} id={Constants.SVG + Constants.X} className={Constants.CURRENT_TURN + " " + Constants.TURN_SIGNAL} />
+        <ReactSVG src={XSVG} id={Constants.SVG + Constants.X} className={Constants.TURN_SIGNAL} />
         <div className="Grid">
           <div className="Row" id="row1">
             <div className="Cell" id={Constants.CELL1}>

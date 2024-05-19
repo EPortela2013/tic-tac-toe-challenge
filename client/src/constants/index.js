@@ -1,38 +1,71 @@
 
 // Symbolizes an X on the board
-export const X = 'X';
+const X = 'X';
 
 // Symbolizes an O on the board
-export const O = 'O';
+const O = 'O';
 
 // Number of total cells
-export const CELL_TOTAL = 9;
+const CELL_TOTAL = 9;
 
 // Cell identifiers
-export const CELL1 = 'cell1';
-export const CELL2 = 'cell2';
-export const CELL3 = 'cell3';
-export const CELL4 = 'cell4';
-export const CELL5 = 'cell5';
-export const CELL6 = 'cell6';
-export const CELL7 = 'cell7';
-export const CELL8 = 'cell8';
-export const CELL9 = 'cell9';
+const CELL1 = 'cell1';
+const CELL2 = 'cell2';
+const CELL3 = 'cell3';
+const CELL4 = 'cell4';
+const CELL5 = 'cell5';
+const CELL6 = 'cell6';
+const CELL7 = 'cell7';
+const CELL8 = 'cell8';
+const CELL9 = 'cell9';
 
 // Display Block class name
-export const DISPLAY_BLOCK = 'DisplayBlock';
+const DISPLAY_BLOCK = 'DisplayBlock';
 
 // Display None class name
-export const DISPLAY_NONE = 'DisplayNone';
+const DISPLAY_NONE = 'DisplayNone';
 
 // Current Turn class name
-export const CURRENT_TURN = 'CurrentTurn';
+const CURRENT_TURN = 'CurrentTurn';
 
 // Turn Signal class name
-export const TURN_SIGNAL = 'TurnSignal';
+const TURN_SIGNAL = 'TurnSignal';
+
+// Waiting turn signal class name
+const WAITING = 'Waiting';
+
+// Game over class name
+const GAME_OVER = 'GameOver';
 
 // SVG (used for creating id to SVG tag)
-export const SVG = 'SVG';
+const SVG = 'SVG';
 
 // SVG spinning class name
-export const SPINNING_SVG = 'Spinning-SVG';
+const SPINNING_SVG = 'Spinning-SVG';
+
+// For when assigned both symbols after timing waiting for other player
+const BOTH = 'Both';
+
+module.exports = {
+    O,
+    X,
+    CELL_TOTAL,
+    CELL1,
+    CELL2,
+    CELL3,
+    CELL4,
+    CELL5,
+    CELL6,
+    CELL7,
+    CELL8,
+    CELL9,
+    DISPLAY_BLOCK,
+    DISPLAY_NONE,
+    CURRENT_TURN,
+    TURN_SIGNAL,
+    WAITING,
+    GAME_OVER,
+    SVG,
+    SPINNING_SVG,
+    BOTH
+};
