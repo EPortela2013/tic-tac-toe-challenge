@@ -270,9 +270,9 @@ function Grid() {
 function GridWrapper() {
   return (
     <div className={Constants.GRIDWRAPPER_CLASS}>
-      <TurnSignal type={Constants.X} src={XSVG} />
+      <Symbol src={XSVG} id={Constants.SVG + Constants.X} className={Constants.TURN_SIGNAL} />
       <Grid />
-      <TurnSignal type={Constants.O} src={OSVG} />
+      <Symbol src={OSVG} id={Constants.SVG + Constants.O} className={Constants.TURN_SIGNAL} />
     </div>);
 }
 
@@ -286,18 +286,10 @@ function Rows() {
   );
 }
 
-function TurnSignal(props) {
-  return (
-    <>
-      <ReactSVG src={props.src} id={Constants.SVG + props.type} className={Constants.TURN_SIGNAL} />
-    </>
-  );
-}
-
 function Symbol(props) {
   return (
     <>
-      <ReactSVG src={props.src} id={props.id} className={Constants.DISPLAY_BLOCK} />
+      <ReactSVG src={props.src} id={props.id} className={props.className ?? ''} />
     </>
   );
 }
