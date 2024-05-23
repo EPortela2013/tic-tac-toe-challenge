@@ -1,4 +1,5 @@
 import React from "react";
+import { createRoot } from 'react-dom/client';
 import * as Constants from "./constants";
 import "./App.css";
 import OSVG from "./svgs/o.svg";
@@ -22,17 +23,16 @@ function App() {
 
     // There is a winner
     if (winningCells[0]) {
-      for (let cell of winningCells) {
-        let cellID = cell + Constants.SVG;
-        document.getElementById(cellID).classList.add(Constants.SPINNING_SVG);
-      }
       data.gameOver = true;
+      for (let cell of winningCells) {
+        document.getElementById(cell).classList.add(Constants.SPINNING_SVG);
+      }
     }
     else if (data.filledCellCount === Constants.CELL_TOTAL) {
+      data.gameOver = true;
       for (let visibleSVG of visibleCells) {
         visibleSVG.classList.add(Constants.SPINNING_SVG);
       }
-      data.gameOver = true;
     }
 
     if (data.gameOver) {
@@ -164,14 +164,15 @@ function App() {
       console.log("Invalid move");
     }
     else {
+      let currentCellElement = document.getElementById(event.currentTarget.id);
+      let root = createRoot(currentCellElement);
       // Fill in the cell with the appropriate symbol.
-      let currentCellSVGGrandParent = document.getElementById(event.currentTarget.id + currentPlayer);
-      visibleCells.push(currentCellSVGGrandParent);
-      let currentCellSVG = currentCellSVGGrandParent.firstChild.firstChild;
-      // Make symbol visible
-      currentCellSVGGrandParent.classList.remove(Constants.DISPLAY_NONE);
-      // Add id for easy targeting after game is over.
-      currentCellSVG.id = event.currentTarget.id + Constants.SVG;
+      if (currentPlayer === Constants.X) {
+        root.render(<Symbol src={XSVG} id={event.currentTarget.id + Constants.X} />);
+      } else {
+        root.render(<Symbol src={OSVG} id={event.currentTarget.id + Constants.O} />);
+      }
+      visibleCells.push(currentCellElement);
       // Save what symbol is in the cell.
       data[event.currentTarget.id] = currentPlayer;
       // Increase count of filled cells.
@@ -251,10 +252,7 @@ function Cells(props) {
   return (
     <>
       {
-        props.cells.map((cell) => (<div className={Constants.CELL_CLASS} key={cell.key} id={cell.id}>
-          <ReactSVG src={OSVG} id={cell.id + Constants.O} className={Constants.DISPLAY_NONE} />
-          <ReactSVG src={XSVG} id={cell.id + Constants.X} className={Constants.DISPLAY_NONE} />
-        </div>))
+        props.cells.map((cell) => (<div className={Constants.CELL_CLASS} key={cell.key} id={cell.id}></div>))
       }
     </>
   );
@@ -278,6 +276,16 @@ function GridWrapper() {
     </div>);
 }
 
+function Rows() {
+  return (
+    <>
+      {
+        Constants.ROW_OBJECTS.map((row) => (<div className={Constants.ROW_CLASS} key={row.key} id={row.id}><Cells cells={row.cells} /></div>))
+      }
+    </>
+  );
+}
+
 function TurnSignal(props) {
   return (
     <>
@@ -286,12 +294,10 @@ function TurnSignal(props) {
   );
 }
 
-function Rows() {
+function Symbol(props) {
   return (
     <>
-      {
-        Constants.ROW_OBJECTS.map((row) => (<div className={Constants.ROW_CLASS} key={row.key} id={row.id}><Cells cells={row.cells} /></div>))
-      }
+      <ReactSVG src={props.src} id={props.id} className={Constants.DISPLAY_BLOCK} />
     </>
   );
 }

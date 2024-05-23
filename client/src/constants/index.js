@@ -54,12 +54,6 @@ const CELL7 = 'cell7';
 const CELL8 = 'cell8';
 const CELL9 = 'cell9';
 
-// Display Block class name
-const DISPLAY_BLOCK = 'DisplayBlock';
-
-// Display None class name
-const DISPLAY_NONE = 'DisplayNone';
-
 // Current Turn class name
 const CURRENT_TURN = 'CurrentTurn';
 
@@ -103,8 +97,6 @@ module.exports = {
     CELL7,
     CELL8,
     CELL9,
-    DISPLAY_BLOCK,
-    DISPLAY_NONE,
     CURRENT_TURN,
     TURN_SIGNAL,
     WAITING,

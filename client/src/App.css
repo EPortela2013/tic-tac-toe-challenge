@@ -54,14 +54,6 @@ svg {
   margin: 0 auto 0 auto;
 }
 
-.DisplayNone{
-  display: none;
-}
-
-.DisplayBlock{
-  display: block;
-}
-
 .TurnSignal>div>svg {
   border: 1px solid black;
   width: 10vw;
