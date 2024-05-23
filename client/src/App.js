@@ -6,10 +6,47 @@ import XSVG from "./svgs/x.svg";
 import { ReactSVG } from "react-svg";
 import { w3cwebsocket as W3CWebSocket } from "websocket";
 
+// Components
 function App() {
   const WS_HOST = window.location.origin.replace(/^http/, 'ws').replace(':3000', ':3001');
   const client = new W3CWebSocket(WS_HOST);
   const [data, setData] = React.useState({ turnPlayerX: true, filledCellCount: 0, gameOver: false });
+  const visibleCells = [];
+
+  function checkGame() {
+    if (data.gameOver) {
+      return;
+    }
+
+    let winningCells = getWinningCells();
+
+    // There is a winner
+    if (winningCells[0]) {
+      for (let cell of winningCells) {
+        let cellID = cell + Constants.SVG;
+        document.getElementById(cellID).classList.add(Constants.SPINNING_SVG);
+      }
+      data.gameOver = true;
+    }
+    else if (data.filledCellCount === Constants.CELL_TOTAL) {
+      for (let visibleSVG of visibleCells) {
+        visibleSVG.classList.add(Constants.SPINNING_SVG);
+      }
+      data.gameOver = true;
+    }
+
+    if (data.gameOver) {
+      // Update turn signal.
+      document.getElementById(Constants.SVG + Constants.X).classList.remove(Constants.CURRENT_TURN);
+      document.getElementById(Constants.SVG + Constants.O).classList.remove(Constants.CURRENT_TURN);
+      document.getElementById(Constants.SVG + Constants.X).classList.remove(Constants.WAITING);
+      document.getElementById(Constants.SVG + Constants.O).classList.remove(Constants.WAITING);
+    }
+
+    setData(data);
+
+    return true;
+  }
 
   function getWinningCells() {
     // First row
@@ -55,102 +92,16 @@ function App() {
     return [];
   }
 
-  function checkGame() {
+  function handleOtherPlayerDropped() {
     if (data.gameOver) {
       return;
     }
 
-    let winningCells = getWinningCells();
-
-    // There is a winner
-    if (winningCells[0]) {
-      for (let cell of winningCells) {
-        let cellID = cell + Constants.SVG;
-        document.getElementById(cellID).classList.add(Constants.SPINNING_SVG);
-      }
-      data.gameOver = true;
+    let svgs = document.getElementsByTagName('svg');
+    for (let svg of svgs) {
+      svg.classList.add(Constants.GAME_OVER);
     }
-    else if (data.filledCellCount === Constants.CELL_TOTAL) {
-      let visibleSVGs = document.getElementsByClassName(Constants.DISPLAY_BLOCK);
-      for (let visibleSVG of visibleSVGs) {
-        visibleSVG.classList.add(Constants.SPINNING_SVG);
-      }
-      data.gameOver = true;
-    }
-
-    if (data.gameOver) {
-      // Update turn signal.
-      document.getElementById(Constants.SVG + Constants.X).classList.remove(Constants.CURRENT_TURN);
-      document.getElementById(Constants.SVG + Constants.O).classList.remove(Constants.CURRENT_TURN);
-      document.getElementById(Constants.SVG + Constants.X).classList.remove(Constants.WAITING);
-      document.getElementById(Constants.SVG + Constants.O).classList.remove(Constants.WAITING);
-    }
-
-    setData(data);
-
-    return true;
-  }
-
-  function makeMove(event, force = false) {
-    // Don't do anything if game is already over.
-    if (data.gameOver) {
-      return;
-    }
-
-    // Don't do anything if symbol has not been assigned
-    if (data?.assignedSymbol === undefined) {
-      return;
-    }
-
-    let currentPlayer = data.turnPlayerX ? Constants.X : Constants.O;
-    let otherPlayer = data.turnPlayerX ? Constants.O : Constants.X;
-
-    if (![currentPlayer, Constants.BOTH].includes(data.assignedSymbol) && !force) {
-      // It's the other player's turn. Don't do anything.
-      return;
-    }
-
-    if (data[event.currentTarget.id]) {
-      // Move is invalid, no need to show error to user.
-      console.log("Invalid move");
-    }
-    else {
-      // Fill in the cell with the appropriate symbol.
-      let currentCellSVGGrandParent = document.getElementById(event.currentTarget.id + currentPlayer);
-      let currentCellSVG = currentCellSVGGrandParent.firstChild.firstChild;
-      // Make symbol visible
-      currentCellSVGGrandParent.classList.remove(Constants.DISPLAY_NONE);
-      // Add id for easy targeting after game is over.
-      currentCellSVG.id = event.currentTarget.id + Constants.SVG;
-      // Save what symbol is in the cell.
-      data[event.currentTarget.id] = currentPlayer;
-      // Increase count of filled cells.
-      ++data.filledCellCount;
-      // Save data.
-      setData(data);
-
-      // Switch turn to other player.
-      data.turnPlayerX = !data.turnPlayerX;
-      // Update turn signal.
-      if (data.assignedSymbol === Constants.BOTH) {
-        document.getElementById(Constants.SVG + currentPlayer).classList.remove(Constants.CURRENT_TURN);
-        document.getElementById(Constants.SVG + otherPlayer).classList.add(Constants.CURRENT_TURN);
-      } else {
-        if (data.assignedSymbol === currentPlayer) {
-          document.getElementById(Constants.SVG + currentPlayer).classList.remove(Constants.CURRENT_TURN);
-          document.getElementById(Constants.SVG + otherPlayer).classList.add(Constants.WAITING);
-        } else {
-          document.getElementById(Constants.SVG + currentPlayer).classList.remove(Constants.WAITING);
-          document.getElementById(Constants.SVG + otherPlayer).classList.add(Constants.CURRENT_TURN);
-        }
-      }
-
-      // Send message to server for it to relay it to the other player
-      if (data.assignedSymbol !== Constants.BOTH && !force) {
-        client.send(JSON.stringify({ move: event.currentTarget.id }));
-      }
-    }
-    return true;
+    data.gameOver = true;
   }
 
   function handleOtherPlayerMove(move) {
@@ -189,16 +140,67 @@ function App() {
     }
   }
 
-  function handleOtherPlayerDropped() {
+  function makeMove(event, force = false) {
+    // Don't do anything if game is already over.
     if (data.gameOver) {
       return;
     }
 
-    let svgs = document.getElementsByTagName('svg');
-    for (let svg of svgs) {
-      svg.classList.add(Constants.GAME_OVER);
+    // Don't do anything if symbol has not been assigned
+    if (data?.assignedSymbol === undefined) {
+      return;
     }
-    data.gameOver = true;
+
+    let currentPlayer = data.turnPlayerX ? Constants.X : Constants.O;
+    let otherPlayer = data.turnPlayerX ? Constants.O : Constants.X;
+
+    if (![currentPlayer, Constants.BOTH].includes(data.assignedSymbol) && !force) {
+      // It's the other player's turn. Don't do anything.
+      return;
+    }
+
+    if (data[event.currentTarget.id]) {
+      // Move is invalid, no need to show error to user.
+      console.log("Invalid move");
+    }
+    else {
+      // Fill in the cell with the appropriate symbol.
+      let currentCellSVGGrandParent = document.getElementById(event.currentTarget.id + currentPlayer);
+      visibleCells.push(currentCellSVGGrandParent);
+      let currentCellSVG = currentCellSVGGrandParent.firstChild.firstChild;
+      // Make symbol visible
+      currentCellSVGGrandParent.classList.remove(Constants.DISPLAY_NONE);
+      // Add id for easy targeting after game is over.
+      currentCellSVG.id = event.currentTarget.id + Constants.SVG;
+      // Save what symbol is in the cell.
+      data[event.currentTarget.id] = currentPlayer;
+      // Increase count of filled cells.
+      ++data.filledCellCount;
+      // Save data.
+      setData(data);
+
+      // Switch turn to other player.
+      data.turnPlayerX = !data.turnPlayerX;
+      // Update turn signal.
+      if (data.assignedSymbol === Constants.BOTH) {
+        document.getElementById(Constants.SVG + currentPlayer).classList.remove(Constants.CURRENT_TURN);
+        document.getElementById(Constants.SVG + otherPlayer).classList.add(Constants.CURRENT_TURN);
+      } else {
+        if (data.assignedSymbol === currentPlayer) {
+          document.getElementById(Constants.SVG + currentPlayer).classList.remove(Constants.CURRENT_TURN);
+          document.getElementById(Constants.SVG + otherPlayer).classList.add(Constants.WAITING);
+        } else {
+          document.getElementById(Constants.SVG + currentPlayer).classList.remove(Constants.WAITING);
+          document.getElementById(Constants.SVG + otherPlayer).classList.add(Constants.CURRENT_TURN);
+        }
+      }
+
+      // Send message to server for it to relay it to the other player
+      if (data.assignedSymbol !== Constants.BOTH && !force) {
+        client.send(JSON.stringify({ move: event.currentTarget.id }));
+      }
+    }
+    return true;
   }
 
   React.useEffect(() => {
@@ -229,7 +231,7 @@ function App() {
     };
 
     // Find all cells.
-    var cells = document.getElementsByClassName("Cell");
+    var cells = document.getElementsByClassName(Constants.CELL_CLASS);
     for (let cell of cells) {
       // Add onclick event handlers.
       cell.addEventListener('click', makeMove);
@@ -238,58 +240,60 @@ function App() {
   });
 
   return (
-    <div className="App">
-      <div className="GridWrapper">
-        <ReactSVG src={XSVG} id={Constants.SVG + Constants.X} className={Constants.TURN_SIGNAL} />
-        <div className="Grid">
-          <div className="Row" id="row1">
-            <div className="Cell" id={Constants.CELL1}>
-              <ReactSVG src={OSVG} id={Constants.CELL1 + Constants.O} className={Constants.DISPLAY_NONE} />
-              <ReactSVG src={XSVG} id={Constants.CELL1 + Constants.X} className={Constants.DISPLAY_NONE} />
-            </div>
-            <div className="Cell" id={Constants.CELL2}>
-              <ReactSVG src={OSVG} id={Constants.CELL2 + Constants.O} className={Constants.DISPLAY_NONE} />
-              <ReactSVG src={XSVG} id={Constants.CELL2 + Constants.X} className={Constants.DISPLAY_NONE} />
-            </div>
-            <div className="Cell" id={Constants.CELL3}>
-              <ReactSVG src={OSVG} id={Constants.CELL3 + Constants.O} className={Constants.DISPLAY_NONE} />
-              <ReactSVG src={XSVG} id={Constants.CELL3 + Constants.X} className={Constants.DISPLAY_NONE} />
-            </div>
-          </div>
-          <div className="Row" id="row2">
-            <div className="Cell" id={Constants.CELL4}>
-              <ReactSVG src={OSVG} id={Constants.CELL4 + Constants.O} className={Constants.DISPLAY_NONE} />
-              <ReactSVG src={XSVG} id={Constants.CELL4 + Constants.X} className={Constants.DISPLAY_NONE} />
-            </div>
-            <div className="Cell" id={Constants.CELL5}>
-              <ReactSVG src={OSVG} id={Constants.CELL5 + Constants.O} className={Constants.DISPLAY_NONE} />
-              <ReactSVG src={XSVG} id={Constants.CELL5 + Constants.X} className={Constants.DISPLAY_NONE} />
-            </div>
-            <div className="Cell" id={Constants.CELL6}>
-              <ReactSVG src={OSVG} id={Constants.CELL6 + Constants.O} className={Constants.DISPLAY_NONE} />
-              <ReactSVG src={XSVG} id={Constants.CELL6 + Constants.X} className={Constants.DISPLAY_NONE} />
-            </div>
-          </div>
-          <div className="Row" id="row3">
-            <div className="Cell" id={Constants.CELL7}>
-              <ReactSVG src={OSVG} id={Constants.CELL7 + Constants.O} className={Constants.DISPLAY_NONE} />
-              <ReactSVG src={XSVG} id={Constants.CELL7 + Constants.X} className={Constants.DISPLAY_NONE} />
-            </div>
-            <div className="Cell" id={Constants.CELL8}>
-              <ReactSVG src={OSVG} id={Constants.CELL8 + Constants.O} className={Constants.DISPLAY_NONE} />
-              <ReactSVG src={XSVG} id={Constants.CELL8 + Constants.X} className={Constants.DISPLAY_NONE} />
-            </div>
-            <div className="Cell" id={Constants.CELL9}>
-              <ReactSVG src={OSVG} id={Constants.CELL9 + Constants.O} className={Constants.DISPLAY_NONE} />
-              <ReactSVG src={XSVG} id={Constants.CELL9 + Constants.X} className={Constants.DISPLAY_NONE} />
-            </div>
-          </div>
-        </div>
-        <ReactSVG src={OSVG} id={Constants.SVG + Constants.O} className={Constants.TURN_SIGNAL} />
-      </div>
+    <div>
+      <GridWrapper />
     </div>
   );
 
+}
+
+function Cells(props) {
+  return (
+    <>
+      {
+        props.cells.map((cell) => (<div className={Constants.CELL_CLASS} key={cell.key} id={cell.id}>
+          <ReactSVG src={OSVG} id={cell.id + Constants.O} className={Constants.DISPLAY_NONE} />
+          <ReactSVG src={XSVG} id={cell.id + Constants.X} className={Constants.DISPLAY_NONE} />
+        </div>))
+      }
+    </>
+  );
+}
+
+function Grid() {
+  return (
+    <div className={Constants.GRID_CLASS}>
+      {
+        <Rows />
+      }
+    </div>);
+}
+
+function GridWrapper() {
+  return (
+    <div className={Constants.GRIDWRAPPER_CLASS}>
+      <TurnSignal type={Constants.X} src={XSVG} />
+      <Grid />
+      <TurnSignal type={Constants.O} src={OSVG} />
+    </div>);
+}
+
+function TurnSignal(props) {
+  return (
+    <>
+      <ReactSVG src={props.src} id={Constants.SVG + props.type} className={Constants.TURN_SIGNAL} />
+    </>
+  );
+}
+
+function Rows() {
+  return (
+    <>
+      {
+        Constants.ROW_OBJECTS.map((row) => (<div className={Constants.ROW_CLASS} key={row.key} id={row.id}><Cells cells={row.cells} /></div>))
+      }
+    </>
+  );
 }
 
 export default App;
