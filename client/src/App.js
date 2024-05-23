@@ -11,7 +11,7 @@ import { w3cwebsocket as W3CWebSocket } from "websocket";
 function App() {
   const WS_HOST = window.location.origin.replace(/^http/, 'ws').replace(':3000', ':3001');
   const client = new W3CWebSocket(WS_HOST);
-  const [data, setData] = React.useState({ turnPlayerX: true, filledCellCount: 0, gameOver: false });
+  const data = { turnPlayerX: true, filledCellCount: 0, gameOver: false };
   const visibleCells = [];
 
   function checkGame() {
@@ -42,8 +42,6 @@ function App() {
       document.getElementById(Constants.SVG + Constants.X).classList.remove(Constants.WAITING);
       document.getElementById(Constants.SVG + Constants.O).classList.remove(Constants.WAITING);
     }
-
-    setData(data);
 
     return true;
   }
@@ -177,8 +175,6 @@ function App() {
       data[event.currentTarget.id] = currentPlayer;
       // Increase count of filled cells.
       ++data.filledCellCount;
-      // Save data.
-      setData(data);
 
       // Switch turn to other player.
       data.turnPlayerX = !data.turnPlayerX;
